@@ -333,7 +333,7 @@ class DoorButton(pygame.sprite.Sprite):
             if door == self.doorid:
                 door = 0
             else:
-                door = self.doorid   #changing camera value
+                door = self.doorid  
         
     def show(self):
         self.game.all_sprites.change_layer(self, BUTTON_LAYER)
@@ -412,6 +412,10 @@ class A32(pygame.sprite.Sprite):
         self.sammyright = False
 
         self.a32_image = pygame.image.load("assets/images/a32.png")
+        self.left_image = pygame.image.load("assets/images/a32jamieleft.png")
+        self.right_image = pygame.image.load("assets/images/a32jamieright.png")
+        self.left_door = pygame.image.load("assets/images/a32leftclosed.png")
+        self.right_door = pygame.image.load("assets/images/a32rightclosed.png")
 
         self.image = pygame.Surface([1920, 1080])
         
@@ -419,6 +423,26 @@ class A32(pygame.sprite.Sprite):
         self.rect.x = self.x
         self.rect.y = self.y
         self.image.blit(self.a32_image, (0,0))
+        
+    def jamie_check(self):
+        if self.sammyleft == True:
+            self.image.blit(self.left_image, (0,0))
+            
+        elif self.sammyright == True:
+            self.image.blit(self.right_image, (0,0))
+            
+    def door_check(self):
+        if door == 0:
+            self.image.blit(self.a32_image, (0,0))
+            self.jamie_check()
+        if door == 1:
+            self.image.blit(self.left_door, (0,0))
+        if door == 2:
+            self.image.blit(self.right_door, (0,0))
+        
+    def update(self):
+        self.jamie_check()
+        self.door_check()
 
 
 class Room(pygame.sprite.Sprite):
@@ -488,35 +512,8 @@ class Entrance(pygame.sprite.Sprite):
         self.x = 0
         self.y = 0
 
-        self.image_to_load = pygame.image.load(image)
         self.image = pygame.Surface([1920, 1080])
-        self.image.set_colorkey(GREEN)
-        
         self.rect = self.image.get_rect()
-        self.rect.x = self.x
-        self.rect.y = self.y
-
-    def show(self):
-        self.game.all_sprites.change_layer(self, HEAVISIDE_LAYER)
-
-    def hide(self):
-        self.game.all_sprites.change_layer(self, HELL_LAYER)
-
-    def map_check(self):
-        if camera != 7:
-            self.hide()
-        else:
-            self.show()
-
-    def jamie_check(self):
-        if self.sammy:
-            self.image.blit(self.image_to_load, (0,0))
-        #else:
-            #self.image.blit(self.image_to_load, (0,0))
-
-    def update(self):
-        self.jamie_check()
-        self.map_check()
 
 
 class Jamie(pygame.sprite.Sprite):
@@ -546,7 +543,7 @@ class Jamie(pygame.sprite.Sprite):
         global HOUR
         global power
         global jamiePos
-        global b52, foodatrium, library, path, csatrium, leftentrance, rightentrance
+        global b52, foodatrium, library, path, csatrium, leftentrance, rightentrance, a32
 
         if self.room == 0:
             self.roomlist = b52.adj_list
@@ -565,9 +562,8 @@ class Jamie(pygame.sprite.Sprite):
 
         if timer % 44 == 0:
             if random.randint(0, 20) <= AILEVEL:
-                index = random.randint(0, 1)
-                #self.room = self.roomlist[index]
-                self.room = 5
+                index = random.randint(0, 4)
+                self.room = self.roomlist[index]
                 if self.room == 0:
                     b52.sammy = True
                     foodatrium.sammy = False
@@ -575,8 +571,7 @@ class Jamie(pygame.sprite.Sprite):
                 elif self.room == 1:
                     foodatrium.sammy = True
                     b52.sammy = False
-                    leftentrance.sammy = False
-                    leftentrance.hide()
+                    a32.sammyleft = False
                 elif self.room == 2:
                     library.sammy = True
                     b52.sammy = False
@@ -588,24 +583,30 @@ class Jamie(pygame.sprite.Sprite):
                 elif self.room == 4:
                     csatrium.sammy = True
                     path.sammy = False
-                    rightentrance.sammy = False
-                    rightentrance.hide()
+                    a32.sammyright = False
                 elif self.room == 5:
-                    print("JAMIE IN THE LEFT ENTRANCE? CRAZY")
-                    leftentrance.sammy = True
-                    leftentrance.show()
+                    a32.sammyleft = True
                     foodatrium.sammy = False
                 elif self.room == 6:
-                    print("JAMIE IN THE RIGHT ENTRANCE? BONKERS")
-                    rightentrance.sammy = True
-                    rightentrance.show()
+                    a32.sammyright = True
                     csatrium.sammy = False
                 elif self.room == 7:
-                    print("JAMIE IN A32? THIS IS THE FIRST TIME ITS EVER HAPPENED")
+                    if a32.sammyleft == True and door == 1:
+                        self.room = 0
+                        a32.sammyleft = False
+                        b52.sammy = True
+                    elif a32.sammyright == True and door == 2:
+                        self.room = 0
+                        a32.sammyright = False
+                        b52.sammy = True
+                    else:
+                        power = 0
 
     def update(self):
         self.move_check()
-                
+
+
+#doorbutton changes global door with door id so 1 is left door and 2 is right
 
 # GAME CODE
 #                                 |\    /|
@@ -649,7 +650,7 @@ class Game:
     #start game
     def start(self):
         #sprite groups
-        global b52, foodatrium, library, path, csatrium, leftentrance, rightentrance
+        global b52, foodatrium, library, path, csatrium, leftentrance, rightentrance, a32
         self.all_sprites = pygame.sprite.LayeredUpdates()
 
         music = pygame.mixer.music.load("assets/audio/office.wav")
@@ -670,17 +671,15 @@ class Game:
         DoorButton(self, "assets/images/leftdoor.png", 25, 800, 1)
         DoorButton(self, "assets/images/rightdoor.png", 1685, 80, 2)
 
-        b52 = Room(self,"assets/images/b52.png","assets/images/b52jamie.png",[1,2],0)
-        foodatrium = Room(self,"assets/images/foodatrium.png","assets/images/foodatriumjamie.png",[0,5],1)
-        library = Room(self,"assets/images/library.png","assets/images/libraryjamie.png",[0,3],2)
-        path = Room(self,"assets/images/path.png","assets/images/pathjamie.png",[2,4],3)
-        csatrium = Room(self,"assets/images/csatrium.png","assets/images/csatriumjamie.png",[3,6],4)
+        b52 = Room(self,"assets/images/b52.png","assets/images/b52jamie.png",[1,2,2,2,1],0)
+        foodatrium = Room(self,"assets/images/foodatrium.png","assets/images/foodatriumjamie.png",[0,5,5,5,0],1)
+        library = Room(self,"assets/images/library.png","assets/images/libraryjamie.png",[3,0,0,0,3],2)
+        path = Room(self,"assets/images/path.png","assets/images/pathjamie.png",[2,4,4,4,2],3)
+        csatrium = Room(self,"assets/images/csatrium.png","assets/images/csatriumjamie.png",[3,6,6,6,3],4)
         
-        A32(self)
-        rightentrance = Room(self,"assets/images/a32jamieright.png","assets/images/a32jamieright.png",[4,7],6)
-        rightentrance.hide()
-        leftentrance = Room(self,"assets/images/a32jamieleft.png","assets/images/a32jamieleft.png",[1,7],5)
-        leftentrance.hide()
+        a32 = A32(self)
+        rightentrance = Room(self,"assets/images/a32jamieright.png","assets/images/a32jamieright.png",[4,7,4,7,4],6)
+        leftentrance = Room(self,"assets/images/a32jamieleft.png","assets/images/a32jamieleft.png",[1,7,1,7,1],5)
 
         CameraButton(self)
         Jamie(self)
